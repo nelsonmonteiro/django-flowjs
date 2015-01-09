@@ -25,6 +25,7 @@ class FlowFile(models.Model):
     # identification and file details
     identifier = models.SlugField(max_length=255, unique=True, db_index=True)
     original_filename = models.CharField(max_length=200)
+    final_file = models.FileField(upload_to=chunk_upload_to, null=True, blank=True)
     total_size = models.IntegerField(default=0)
     total_chunks = models.IntegerField(default=0)
 
@@ -67,18 +68,18 @@ class FlowFile(models.Model):
         return None
 
     @property
-    def full_path(self):
-        """
-        Return the full path of the file uploaded
-        """
-        return os.path.join(settings.MEDIA_ROOT, self.path)
-
-    @property
     def path(self):
         """
         Return the path of the file uploaded
         """
         return os.path.join(FLOWJS_PATH, self.filename)
+
+    @property
+    def url(self):
+        """
+        Return the path of the file uploaded
+        """
+        return os.path.join(settings.MEDIA_URL, FLOWJS_PATH, self.filename)
 
     def get_chunk_filename(self, number):
         """
@@ -93,11 +94,12 @@ class FlowFile(models.Model):
         if self.state == self.STATE_UPLOADING and self.total_chunks_uploaded == self.total_chunks:
 
             # create file and write chunks in the right order
-            temp_file = open(self.full_path, "wb")
+            temp_file = default_storage.open(self.path, 'wb')
             for chunk in self.chunks.all():
                 chunk_bytes = chunk.file.read()
                 temp_file.write(chunk_bytes)
             temp_file.close()
+            self.final_file = self.path
 
             # set state as completed
             self.state = self.STATE_COMPLETED
