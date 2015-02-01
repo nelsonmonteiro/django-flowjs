@@ -22,7 +22,7 @@ class UploadView(View):
         self.flowTotalChunks = int(request.REQUEST.get('flowTotalChunks'))
 
         # identifier is a combination of session key and flow identifier
-        self.identifier = ('%s-%s' % (request.session.session_key, self.flowIdentifier))[:255]
+        self.identifier = ('%s-%s' % (request.session.session_key, self.flowIdentifier))[:200]
         return super(UploadView, self).dispatch(request, *args, **kwargs)
 
     def get(self, *args, **kwargs):
