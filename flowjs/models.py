@@ -1,4 +1,5 @@
 import os
+import threading
 from django.db import models
 from django.db.models.signals import pre_delete
 from django.dispatch.dispatcher import receiver
@@ -105,9 +106,17 @@ class FlowFile(models.Model):
             self.state = self.STATE_COMPLETED
             super(FlowFile, self).save()
 
-            # delete chunks automatically if is activated in settings
             if FLOWJS_AUTO_DELETE_CHUNKS:
-                self.chunks.all().delete()
+                self.delete_chunks()
+
+    def delete_chunks(self, thread=False):
+        if not thread:
+            t = threading.Thread(target=self.delete_chunks, args=[True])
+            t.setDaemon(True)
+            t.start()
+        else:
+            for chunk in self.chunks.all():
+                chunk.delete()
 
     def is_valid_session(self, session):
         """
@@ -147,10 +156,7 @@ def flow_file_delete(sender, instance, **kwargs):
     Remove files on delete if is activated in settings
     """
     if FLOWJS_REMOVE_FILES_ON_DELETE:
-        try:
-            default_storage.delete(instance.path)
-        except NotImplementedError:
-            pass
+        default_storage.delete(instance.path)
 
 
 @receiver(pre_delete, sender=FlowFileChunk)
