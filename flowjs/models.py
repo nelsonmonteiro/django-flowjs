@@ -5,8 +5,10 @@ from django.db.models.signals import pre_delete
 from django.dispatch.dispatcher import receiver
 from django.core.files.storage import default_storage
 from django.conf import settings
-from settings import FLOWJS_PATH, FLOWJS_REMOVE_FILES_ON_DELETE, FLOWJS_AUTO_DELETE_CHUNKS
-from utils import chunk_upload_to
+from settings import FLOWJS_PATH, FLOWJS_REMOVE_FILES_ON_DELETE, \
+    FLOWJS_AUTO_DELETE_CHUNKS, FLOWJS_JOIN_CHUNKS_IN_BACKGROUND, FLOWJS_WITH_CELERY
+from utils import chunk_upload_to, guess_filetype
+from signals import file_is_ready, file_joining_failed, file_upload_failed
 
 
 class FlowFile(models.Model):
@@ -16,11 +18,15 @@ class FlowFile(models.Model):
     STATE_UPLOADING = 1
     STATE_COMPLETED = 2
     STATE_UPLOAD_ERROR = 3
+    STATE_JOINING = 4
+    STATE_JOINING_ERROR = 5
 
     STATE_CHOICES = [
         (STATE_UPLOADING, "Uploading"),
         (STATE_COMPLETED, "Completed"),
-        (STATE_UPLOAD_ERROR, "Upload Error")
+        (STATE_UPLOAD_ERROR, "Upload Error"),
+        (STATE_JOINING, "Joining chunks"),
+        (STATE_JOINING_ERROR, "Joining chunks error"),
     ]
 
     # identification and file details
@@ -88,35 +94,72 @@ class FlowFile(models.Model):
         """
         return '%s-%s.tmp' % (self.identifier, number)
 
+    @property
+    def join_in_background(self):
+        """
+        Check if the file should be joined in background
+        """
+        if not hasattr(self, '_join_in_background'):
+            filetype = guess_filetype(self.original_filename)
+            self._join_in_background = FLOWJS_JOIN_CHUNKS_IN_BACKGROUND == 'all' \
+                or (FLOWJS_JOIN_CHUNKS_IN_BACKGROUND == 'media' and filetype in ['audio', 'video'])
+        return self._join_in_background
+
     def join_chunks(self):
         """
         Join all the chucks in one file
         """
         if self.state == self.STATE_UPLOADING and self.total_chunks_uploaded == self.total_chunks:
+            if self.join_in_background:
+                self.state = self.STATE_JOINING
+                super(FlowFile, self).save()
+                if FLOWJS_WITH_CELERY:
+                    from tasks import join_chunks_task
+                    join_chunks_task.delay(self)
+                else:
+                    t = threading.Thread(target=self._join_chunks)
+                    t.setDaemon(True)
+                    t.start()
+            else:
+                self._join_chunks()
 
-            # create file and write chunks in the right order
+    def _join_chunks(self):
+        try:
             temp_file = default_storage.open(self.path, 'wb')
             for chunk in self.chunks.all():
                 chunk_bytes = chunk.file.read()
                 temp_file.write(chunk_bytes)
             temp_file.close()
             self.final_file = self.path
-
-            # set state as completed
             self.state = self.STATE_COMPLETED
             super(FlowFile, self).save()
 
+            # send ready signal
+            if self.join_in_background:
+                file_is_ready.send(self)
+
             if FLOWJS_AUTO_DELETE_CHUNKS:
                 self.delete_chunks()
+        except Exception, e:
+            self.state = self.STATE_JOINING_ERROR
+            super(FlowFile, self).save()
 
-    def delete_chunks(self, thread=False):
-        if not thread:
-            t = threading.Thread(target=self.delete_chunks, args=[True])
+            # send error signal
+            if self.join_in_background:
+                file_joining_failed.send(self)
+
+    def delete_chunks(self):
+        if FLOWJS_WITH_CELERY:
+            from tasks import delete_chunks_task
+            delete_chunks_task.delay(self)
+        else:
+            t = threading.Thread(target=self._delete_chunks)
             t.setDaemon(True)
             t.start()
-        else:
-            for chunk in self.chunks.all():
-                chunk.delete()
+
+    def _delete_chunks(self):
+        for chunk in self.chunks.all():
+            chunk.delete()
 
     def is_valid_session(self, session):
         """

@@ -60,3 +60,13 @@ class UploadView(View):
             chunk.save()
 
         return http.HttpResponse(flow_file.identifier)
+
+
+class CheckStateView(View):
+    def get(self, request, *args, **kwargs):
+        """
+        Return the status of the file uploaded. This is important for big files,
+        because user don't need to wait for the file to be ready.
+        """
+        flow = get_object_or_404(FlowFile, identifier=request.GET.get('identifier', ''))
+        return http.HttpResponse(flow.state)
