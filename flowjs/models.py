@@ -33,7 +33,7 @@ class FlowFile(models.Model):
     identifier = models.SlugField(max_length=255, unique=True, db_index=True)
     original_filename = models.CharField(max_length=200)
     final_file = models.FileField(upload_to=chunk_upload_to, max_length=255, null=True, blank=True)
-    total_size = models.IntegerField(default=0)
+    total_size = models.BigIntegerField(default=0)
     total_chunks = models.IntegerField(default=0)
 
     # current state
