@@ -9,6 +9,29 @@ Feel free to take control of the project. This was working with ng-flow-standalo
 Celery isn't required but it is recommended.
 
 
+Installation
+============
+
+Add 'flowjs' to INSTALLED_APPS
+```
+INSTALLED_APPS = (
+      ...
+      'flowjs',
+      ...
+)
+```
+
+Add 'flowjs' to urls.py
+```
+urlpatterns = (
+      ...
+      url(r'^flowjs/', include('flowjs.urls')),
+      ...
+)
+```
+
+
+
 Settings
 ========
 *FLOWJS_PATH*: Media path where the files are saved. *Default: 'flowjs/'*
