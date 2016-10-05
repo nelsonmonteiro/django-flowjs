@@ -1,14 +1,16 @@
 import os
 import threading
+
+from django.conf import settings
+from django.core.files.storage import default_storage
 from django.db import models
 from django.db.models.signals import pre_delete
 from django.dispatch.dispatcher import receiver
-from django.core.files.storage import default_storage
-from django.conf import settings
-from settings import FLOWJS_PATH, FLOWJS_REMOVE_FILES_ON_DELETE, \
-    FLOWJS_AUTO_DELETE_CHUNKS, FLOWJS_JOIN_CHUNKS_IN_BACKGROUND, FLOWJS_WITH_CELERY
-from utils import chunk_upload_to, guess_filetype
+from settings import (FLOWJS_AUTO_DELETE_CHUNKS,
+                      FLOWJS_JOIN_CHUNKS_IN_BACKGROUND, FLOWJS_PATH,
+                      FLOWJS_REMOVE_FILES_ON_DELETE, FLOWJS_WITH_CELERY)
 from signals import file_is_ready, file_joining_failed, file_upload_failed
+from utils import chunk_upload_to, guess_filetype
 
 
 class FlowFile(models.Model):
@@ -32,7 +34,8 @@ class FlowFile(models.Model):
     # identification and file details
     identifier = models.SlugField(max_length=255, unique=True, db_index=True)
     original_filename = models.CharField(max_length=200)
-    final_file = models.FileField(upload_to=chunk_upload_to, max_length=255, null=True, blank=True)
+    final_file = models.FileField(
+        upload_to=chunk_upload_to, max_length=255, null=True, blank=True)
     total_size = models.IntegerField(default=0)
     total_chunks = models.IntegerField(default=0)
 
@@ -140,7 +143,7 @@ class FlowFile(models.Model):
 
             if FLOWJS_AUTO_DELETE_CHUNKS:
                 self.delete_chunks()
-        except Exception, e:
+        except Exception as e:
             self.state = self.STATE_JOINING_ERROR
             super(FlowFile, self).save()
 
