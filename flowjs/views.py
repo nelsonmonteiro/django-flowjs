@@ -49,6 +49,7 @@ class UploadView(View):
             'total_size': self.flowTotalSize,
             'total_chunks': self.flowTotalChunks,
         })
+        print()
 
         # validate the file form
         form = FlowFileForm(request.POST, request.FILES)
@@ -59,10 +60,6 @@ class UploadView(View):
         chunk, created = flow_file.chunks.get_or_create(number=self.flowChunkNumber, defaults={
             'file': form.cleaned_data['file'],
         })
-        if not created:
-            chunk.file = form.file
-            chunk.size = form.size
-            chunk.save()
 
         return http.HttpResponse(flow_file.identifier)
 
