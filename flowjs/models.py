@@ -63,6 +63,10 @@ class FlowFile(models.Model):
         return ext
 
     @property
+    def chunks(self):
+        return FlowFileChunk.objects.filter(chunks=self)
+
+    @property
     def filename(self):
         """
         Return the unique filename generated based on the identifier
