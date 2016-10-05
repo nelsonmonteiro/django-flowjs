@@ -1,8 +1,8 @@
-from django import http
-from django import forms
-from django.views.generic.base import View
+from django import forms, http
 from django.shortcuts import get_object_or_404
-from models import FlowFile, FlowFileChunk
+from django.views.generic.base import View
+
+from .models import FlowFile, FlowFileChunk
 
 
 class FlowFileForm(forms.Form):
@@ -10,11 +10,13 @@ class FlowFileForm(forms.Form):
 
 
 class UploadView(View):
+
     def dispatch(self, request, *args, **kwargs):
         # get flow variables
         self.flowChunkNumber = int(request.REQUEST.get('flowChunkNumber'))
         self.flowChunckSize = int(request.REQUEST.get('flowChunkSize'))
-        self.flowCurrentChunkSize = int(request.REQUEST.get('flowCurrentChunkSize'))
+        self.flowCurrentChunkSize = int(
+            request.REQUEST.get('flowCurrentChunkSize'))
         self.flowTotalSize = int(request.REQUEST.get('flowTotalSize'))
         self.flowIdentifier = request.REQUEST.get('flowIdentifier')
         self.flowFilename = request.REQUEST.get('flowFilename')
@@ -22,7 +24,8 @@ class UploadView(View):
         self.flowTotalChunks = int(request.REQUEST.get('flowTotalChunks'))
 
         # identifier is a combination of session key and flow identifier
-        self.identifier = ('%s-%s' % (request.session.session_key, self.flowIdentifier))[:200]
+        self.identifier = (
+            '%s-%s' % (request.session.session_key, self.flowIdentifier))[:200]
         return super(UploadView, self).dispatch(request, *args, **kwargs)
 
     def get(self, *args, **kwargs):
@@ -30,7 +33,8 @@ class UploadView(View):
         Flow.js test if chunk exist before upload it again.
         Return 200 if exist.
         """
-        get_object_or_404(FlowFileChunk, number=self.flowChunkNumber, parent__identifier=self.identifier)
+        get_object_or_404(FlowFileChunk, number=self.flowChunkNumber,
+                          parent__identifier=self.identifier)
         return http.HttpResponse(self.identifier)
 
     def post(self, request, *args, **kwargs):
@@ -63,10 +67,12 @@ class UploadView(View):
 
 
 class CheckStateView(View):
+
     def get(self, request, *args, **kwargs):
         """
         Return the status of the file uploaded. This is important for big files,
         because user don't need to wait for the file to be ready.
         """
-        flow = get_object_or_404(FlowFile, identifier=request.GET.get('identifier', ''))
+        flow = get_object_or_404(
+            FlowFile, identifier=request.GET.get('identifier', ''))
         return http.HttpResponse(flow.state)

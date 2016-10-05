@@ -6,11 +6,12 @@ from django.core.files.storage import default_storage
 from django.db import models
 from django.db.models.signals import pre_delete
 from django.dispatch.dispatcher import receiver
-from settings import (FLOWJS_AUTO_DELETE_CHUNKS,
-                      FLOWJS_JOIN_CHUNKS_IN_BACKGROUND, FLOWJS_PATH,
-                      FLOWJS_REMOVE_FILES_ON_DELETE, FLOWJS_WITH_CELERY)
-from signals import file_is_ready, file_joining_failed, file_upload_failed
-from utils import chunk_upload_to, guess_filetype
+
+from .settings import (FLOWJS_AUTO_DELETE_CHUNKS,
+                       FLOWJS_JOIN_CHUNKS_IN_BACKGROUND, FLOWJS_PATH,
+                       FLOWJS_REMOVE_FILES_ON_DELETE, FLOWJS_WITH_CELERY)
+from .signals import file_is_ready, file_joining_failed, file_upload_failed
+from .utils import chunk_upload_to, guess_filetype
 
 
 class FlowFile(models.Model):
