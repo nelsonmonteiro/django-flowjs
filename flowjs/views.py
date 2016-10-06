@@ -49,7 +49,6 @@ class UploadView(View):
             'total_size': self.flowTotalSize,
             'total_chunks': self.flowTotalChunks,
         })
-        print()
 
         # validate the file form
         form = FlowFileForm(request.POST, request.FILES)
