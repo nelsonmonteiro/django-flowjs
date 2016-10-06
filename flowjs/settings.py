@@ -16,4 +16,4 @@ FLOWJS_EXPIRATION_DAYS = getattr(settings, "FLOWJS_EXPIRATION_DAYS", 1)
 FLOWJS_JOIN_CHUNKS_IN_BACKGROUND = getattr(settings, "FLOWJS_JOIN_CHUNKS_IN_BACKGROUND", 'none')
 
 # Check if FLOWJS should use Celery
-FLOWJS_WITH_CELERY = 'celery' in settings.INSTALLED_APPS
+FLOWJS_WITH_CELERY = getattr(settings, "FLOWJS_USE_CELERY", False)
